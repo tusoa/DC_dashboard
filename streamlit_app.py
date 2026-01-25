@@ -227,63 +227,63 @@ AVOIDANCE_VARS = {
     'bikes': 'Biking/scootering'
 }
 
-# Behavior Comparison tab variable mappings
+# Behavior Comparison tab variable mappings (using same vars as rest of dashboard)
 BEHAVIOR_COMPARISON_VARS = {
     'alcohol': {
         'label': 'Driving within 2 hrs of 3+ drinks',
-        'prevalence': 'alcohol_bin',
-        'danger': 'dangeralc_num',
-        'enforcement': 'riskalc_num',
-        'norms': 'normsalc_bin'
+        'prevalence': 'alcohol',
+        'danger': 'dangeralc',
+        'enforcement': 'legalalc',
+        'norms': 'normsalc'
     },
     'text': {
         'label': 'Driving while manually using phone',
-        'prevalence': 'text_bin',
-        'danger': 'dangertext_num',
-        'enforcement': 'risktext_num',
-        'norms': 'normstext_bin'
+        'prevalence': 'text',
+        'danger': 'dangertext',
+        'enforcement': 'legaltext',
+        'norms': 'normstext'
     },
     'drowsy': {
         'label': 'Driving after less than 5 hrs sleep',
-        'prevalence': 'drowsy_bin',
-        'danger': 'dangerdrowsy_num',
-        'enforcement': 'riskdrowsy_num',
-        'norms': 'normsdrowsy_bin'
+        'prevalence': 'drowsy',
+        'danger': 'dangerdrowsy',
+        'enforcement': 'legaldrowsy',
+        'norms': 'normsdrowsy'
     },
     'speed': {
         'label': 'Driving 10+ mph over speed limit',
-        'prevalence': 'speed_bin',
-        'danger': 'dangerspeed_num',
-        'enforcement': 'riskspeed_num',
-        'norms': 'normsspeed_bin'
+        'prevalence': 'speed',
+        'danger': 'dangerspeed',
+        'enforcement': 'legalspeed',
+        'norms': 'normsspeed'
     },
-    'cann9': {
+    'cannabis9': {
         'label': 'Driving within 9 hrs of ingesting cannabis',
-        'prevalence': 'cann9_bin',
-        'danger': 'dangercann9_num',
-        'enforcement': 'riskcann9_num',
-        'norms': 'normscann9_bin'
+        'prevalence': 'cannabis9',
+        'danger': 'dangercann9',
+        'enforcement': 'legalcann9',
+        'norms': 'normscann9'
     },
     'sim': {
         'label': 'Driving within 2 hrs of alcohol + cannabis',
-        'prevalence': 'sim_bin',
-        'danger': 'dangersim_num',
-        'enforcement': 'risksim_num',
-        'norms': 'normssim_bin'
+        'prevalence': 'sim',
+        'danger': 'dangersim',
+        'enforcement': 'legalsim',
+        'norms': 'normssim'
     },
     'rx': {
         'label': 'Driving while feeling effects of Rx/drugs',
-        'prevalence': 'rx_bin',
-        'danger': 'dangerrx_num',
-        'enforcement': 'riskrx_num',
-        'norms': 'normsrx_bin'
+        'prevalence': 'rx',
+        'danger': 'dangerrx',
+        'enforcement': 'legalrx',
+        'norms': 'normsrx'
     },
     'seatbelt': {
         'label': 'Driving without seatbelt',
-        'prevalence': 'seatbelt_bin',
-        'danger': 'dangerseatbelt_num',
-        'enforcement': 'riskseatbelt_num',
-        'norms': 'normsbelt_bin'
+        'prevalence': 'seatbelt',
+        'danger': 'dangerseatbelt',
+        'enforcement': 'legalseatbelt',
+        'norms': 'normsbelt'
     }
 }
 
@@ -698,23 +698,35 @@ def create_behavior_comparison_chart(df, behavior_key, behavior_vars):
     
     data = []
     
-    # 1. Prevalence (% who did behavior)
-    prev = calculate_prevalence_binary(df, vars_info['prevalence'])
+    # 1. Prevalence (% who did behavior at least once) - using existing calculate_prevalence
+    prev = calculate_prevalence(df, vars_info['prevalence'])
     if prev is not None:
         data.append({'Measure': 'Prevalence', 'Percentage': prev})
     
-    # 2. Danger (% rating as dangerous)
-    danger = calculate_danger_pct(df, vars_info['danger'])
-    if danger is not None:
-        data.append({'Measure': 'Rated Dangerous', 'Percentage': danger})
+    # 2. Danger (% rating as somewhat or very dangerous) - categorical text
+    danger_var = vars_info['danger']
+    if danger_var in df.columns:
+        danger_counts = df[danger_var].value_counts()
+        total = danger_counts.sum()
+        if 'Prefer not to answer' in danger_counts.index:
+            total = total - danger_counts.get('Prefer not to answer', 0)
+        if total > 0:
+            dangerous = danger_counts.get('Very dangerous', 0) + danger_counts.get('Somewhat dangerous', 0)
+            data.append({'Measure': 'Rated Dangerous', 'Percentage': (dangerous / total) * 100})
     
-    # 3. Enforcement (% rating as likely to be pulled over)
-    enforcement = calculate_enforcement_pct(df, vars_info['enforcement'])
-    if enforcement is not None:
-        data.append({'Measure': 'Rated Likely (Enforcement)', 'Percentage': enforcement})
+    # 3. Enforcement (% rating as somewhat or very likely) - categorical text
+    enforce_var = vars_info['enforcement']
+    if enforce_var in df.columns:
+        enforce_counts = df[enforce_var].value_counts()
+        total = enforce_counts.sum()
+        if 'Prefer not to answer' in enforce_counts.index:
+            total = total - enforce_counts.get('Prefer not to answer', 0)
+        if total > 0:
+            likely = enforce_counts.get('Very likely', 0) + enforce_counts.get('Somewhat likely', 0)
+            data.append({'Measure': 'Rated Likely (Enforcement)', 'Percentage': (likely / total) * 100})
     
-    # 4. Norms (% believing peers engage)
-    norms = calculate_prevalence_binary(df, vars_info['norms'])
+    # 4. Norms (% believing peers engage at least once) - using existing calculate_prevalence
+    norms = calculate_prevalence(df, vars_info['norms'])
     if norms is not None:
         data.append({'Measure': 'Peers Engage', 'Percentage': norms})
     
