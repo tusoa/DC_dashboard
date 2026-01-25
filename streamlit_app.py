@@ -701,20 +701,9 @@ def create_behavior_comparison_chart(df, behavior_key, behavior_vars):
     # 1. Prevalence (% who did behavior at least once) - using existing calculate_prevalence
     prev = calculate_prevalence(df, vars_info['prevalence'])
     if prev is not None:
-        data.append({'Measure': 'Prevalence', 'Percentage': prev})
+        data.append({'Measure': 'Prevalence', 'Percentage': prev, 'Order': 1})
     
-    # 2. Danger (% rating as somewhat or very dangerous) - categorical text
-    danger_var = vars_info['danger']
-    if danger_var in df.columns:
-        danger_counts = df[danger_var].value_counts()
-        total = danger_counts.sum()
-        if 'Prefer not to answer' in danger_counts.index:
-            total = total - danger_counts.get('Prefer not to answer', 0)
-        if total > 0:
-            dangerous = danger_counts.get('Very dangerous', 0) + danger_counts.get('Somewhat dangerous', 0)
-            data.append({'Measure': 'Rated Dangerous', 'Percentage': (dangerous / total) * 100})
-    
-    # 3. Enforcement (% rating as somewhat or very likely) - categorical text
+    # 2. Enforcement (% rating as somewhat or very likely) - categorical text
     enforce_var = vars_info['enforcement']
     if enforce_var in df.columns:
         enforce_counts = df[enforce_var].value_counts()
@@ -723,18 +712,37 @@ def create_behavior_comparison_chart(df, behavior_key, behavior_vars):
             total = total - enforce_counts.get('Prefer not to answer', 0)
         if total > 0:
             likely = enforce_counts.get('Very likely', 0) + enforce_counts.get('Somewhat likely', 0)
-            data.append({'Measure': 'Rated Likely (Enforcement)', 'Percentage': (likely / total) * 100})
+            data.append({'Measure': 'Enforcement Risk', 'Percentage': (likely / total) * 100, 'Order': 2})
+    
+    # 3. Danger (% rating as somewhat or very dangerous) - categorical text
+    danger_var = vars_info['danger']
+    if danger_var in df.columns:
+        danger_counts = df[danger_var].value_counts()
+        total = danger_counts.sum()
+        if 'Prefer not to answer' in danger_counts.index:
+            total = total - danger_counts.get('Prefer not to answer', 0)
+        if total > 0:
+            dangerous = danger_counts.get('Very dangerous', 0) + danger_counts.get('Somewhat dangerous', 0)
+            data.append({'Measure': 'Danger', 'Percentage': (dangerous / total) * 100, 'Order': 3})
     
     # 4. Norms (% believing peers engage at least once) - using existing calculate_prevalence
     norms = calculate_prevalence(df, vars_info['norms'])
     if norms is not None:
-        data.append({'Measure': 'Peers Engage', 'Percentage': norms})
+        data.append({'Measure': 'Norms', 'Percentage': norms, 'Order': 4})
     
     if not data:
         return None
     
-    chart_df = pd.DataFrame(data)
+    chart_df = pd.DataFrame(data).sort_values('Order', ascending=False)  # Reverse for horizontal bar display
     n = len(df)
+    
+    # Different color for each measure
+    color_map = {
+        'Prevalence': COLORS['primary'],       # Teal
+        'Enforcement Risk': COLORS['accent'],  # Gold
+        'Danger': COLORS['secondary'],         # Burgundy
+        'Norms': COLORS['neutral']             # Gray
+    }
     
     fig = px.bar(
         chart_df,
@@ -742,10 +750,11 @@ def create_behavior_comparison_chart(df, behavior_key, behavior_vars):
         y='Measure',
         orientation='h',
         text=chart_df['Percentage'].apply(lambda x: f'{x:.1f}%'),
-        color_discrete_sequence=[COLORS['primary']]
+        color='Measure',
+        color_discrete_map=color_map
     )
     
-    fig.update_traces(textposition='outside', textfont=dict(color='#000000', size=12))
+    fig.update_traces(textposition='outside', showlegend=False, textfont=dict(color='#000000', size=12))
     fig.update_layout(
         plot_bgcolor='#ffffff',
         paper_bgcolor='#ffffff',
@@ -754,7 +763,7 @@ def create_behavior_comparison_chart(df, behavior_key, behavior_vars):
         xaxis_title='Percentage',
         yaxis_title='',
         xaxis=dict(range=[0, 100], tickfont={'color': '#666666', 'size': 12}, title={'font': {'color': '#666666'}}, showgrid=True, gridcolor='#e2e8f0'),
-        yaxis=dict(tickfont={'color': '#666666', 'size': 12}, showgrid=True, gridcolor='#e2e8f0'),
+        yaxis=dict(tickfont={'color': '#666666', 'size': 12}, showgrid=True, gridcolor='#e2e8f0', categoryorder='array', categoryarray=['Norms', 'Danger', 'Enforcement Risk', 'Prevalence']),
         height=300,
         margin=dict(l=20, r=20, t=50, b=20),
         shapes=[{
@@ -1438,9 +1447,9 @@ def main():
         st.markdown("""
         **Measure definitions:**
         - **Prevalence**: % who engaged in the behavior at least once (past 30 days)
-        - **Rated Dangerous**: % who rated the behavior as "Somewhat dangerous" or "Very dangerous"
-        - **Rated Likely (Enforcement)**: % who rated being pulled over as "Somewhat likely" or "Very likely"
-        - **Peers Engage**: % who believe their peers engage in the behavior at least once
+        - **Enforcement Risk**: % who rated being pulled over as "Somewhat likely" or "Very likely"
+        - **Danger**: % who rated the behavior as "Somewhat dangerous" or "Very dangerous"
+        - **Norms**: % who believe their peers engage in the behavior at least once
         """)
 
 if __name__ == "__main__":
