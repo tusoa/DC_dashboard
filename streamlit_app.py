@@ -369,7 +369,7 @@ def filter_dataframe(df, filters):
         filtered = filtered[filtered['city'].isin(filters['city'])]
     if filters['enrollment']:
         filtered = filtered[filtered['enroll'].isin(filters['enrollment'])]
-    if filters['university']:
+    if filters['university']:  # Only filter if universities selected
         filtered = filtered[filtered['university'].isin(filters['university'])]
     if filters['driver_status'] != 'All':
         if filters['driver_status'] == 'Drivers only':
@@ -692,7 +692,7 @@ def create_stacked_perception_chart(df, var_dict, title, order, colors):
     return fig
 
 def create_behavior_comparison_chart(df, behavior_key, behavior_vars):
-    """Create a bar chart showing 4 aggregate measures for a single behavior."""
+    """Create a horizontal bar chart showing 4 aggregate measures for a single behavior."""
     vars_info = behavior_vars[behavior_key]
     label = vars_info['label']
     
@@ -736,34 +736,26 @@ def create_behavior_comparison_chart(df, behavior_key, behavior_vars):
     chart_df = pd.DataFrame(data)
     n = len(df)
     
-    # Assign colors to each measure
-    color_map = {
-        'Prevalence': COLORS['primary'],
-        'Rated Dangerous': COLORS['secondary'],
-        'Rated Likely (Enforcement)': COLORS['accent'],
-        'Peers Engage': COLORS['neutral']
-    }
-    
     fig = px.bar(
         chart_df,
-        x='Measure',
-        y='Percentage',
+        x='Percentage',
+        y='Measure',
+        orientation='h',
         text=chart_df['Percentage'].apply(lambda x: f'{x:.1f}%'),
-        color='Measure',
-        color_discrete_map=color_map
+        color_discrete_sequence=[COLORS['primary']]
     )
     
-    fig.update_traces(textposition='outside', showlegend=False, textfont=dict(color='#000000', size=12))
+    fig.update_traces(textposition='outside', textfont=dict(color='#000000', size=12))
     fig.update_layout(
         plot_bgcolor='#ffffff',
         paper_bgcolor='#ffffff',
         font={'color': '#666666', 'size': 13},
         title={'text': f'{label} (N={n})', 'font': {'size': 16, 'color': '#666666'}},
-        xaxis_title='',
-        yaxis_title='Percentage',
-        xaxis=dict(tickfont={'color': '#666666', 'size': 12}, showgrid=True, gridcolor='#e2e8f0'),
-        yaxis=dict(range=[0, 100], tickfont={'color': '#666666', 'size': 12}, title={'font': {'color': '#666666'}}, showgrid=True, gridcolor='#e2e8f0'),
-        height=400,
+        xaxis_title='Percentage',
+        yaxis_title='',
+        xaxis=dict(range=[0, 100], tickfont={'color': '#666666', 'size': 12}, title={'font': {'color': '#666666'}}, showgrid=True, gridcolor='#e2e8f0'),
+        yaxis=dict(tickfont={'color': '#666666', 'size': 12}, showgrid=True, gridcolor='#e2e8f0'),
+        height=300,
         margin=dict(l=20, r=20, t=50, b=20),
         shapes=[{
             'type': 'rect', 'xref': 'paper', 'yref': 'paper',
@@ -802,10 +794,10 @@ def main():
         enroll_options = df['enroll'].dropna().unique().tolist()
         selected_enrollment = st.multiselect("College Enrollment", options=enroll_options, default=enroll_options)
         
-        # University filter
+        # University filter - defaults to empty (no filter applied)
         if 'university' in df.columns:
             university_options = df['university'].dropna().unique().tolist()
-            selected_universities = st.multiselect("University", options=university_options, default=university_options)
+            selected_universities = st.multiselect("University", options=university_options, default=[])
         else:
             selected_universities = []
         
