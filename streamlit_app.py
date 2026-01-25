@@ -1286,7 +1286,7 @@ def main():
     # =========================================================================
     # TAB 6: BEHAVIOR COMPARISON
     # =========================================================================
-    with tab8:
+    with tab6:
         st.header("Behavior Comparison")
         st.markdown(f"**{len(filtered_df)} respondents** | *Compare aggregate measures across behaviors*")
         st.markdown("Select a behavior to see its prevalence, danger perception, enforcement perception, and peer norms side-by-side.")
@@ -1331,7 +1331,7 @@ def main():
     # =========================================================================
     # TAB 7: DUI AVOIDANCE
     # =========================================================================
-    with tab6:
+    with tab7:
         st.header("DUI Avoidance Methods")
         st.markdown(f"**{len(filtered_df)} respondents** | *Methods used to avoid driving impaired*")
         
@@ -1374,7 +1374,7 @@ def main():
     # =========================================================================
     # TAB 8: MICROMOBILITY
     # =========================================================================
-    with tab7:
+    with tab8:
         st.header("Micromobility")
         st.markdown("*Overall prevalence only — small samples prevent demographic cross-tabs*")
         
