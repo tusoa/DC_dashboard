@@ -1306,9 +1306,18 @@ def main():
     # =========================================================================
     with tab6:
         st.header("Behavior Comparison")
-        st.markdown(f"**{len(filtered_df)} respondents** | *Compare aggregate measures across behaviors*")
-        st.markdown("Select a behavior to see its prevalence, danger perception, enforcement perception, and peer norms side-by-side.")
-        
+
+        drivers_df = filtered_df[filtered_df['drive'] == 'Yes']
+        st.markdown(f"**{len(drivers_df)} drivers** based on current filters")
+
+        if len(drivers_df) == 0:
+            st.warning("No drivers in the current filter selection.")
+        else:
+            st.markdown(
+                "Compare prevalence, perceived danger, enforcement risk, and peer norms "
+                "across driving-related behaviors."
+        )
+
         col1, col2 = st.columns(2)
         
         with col1:
