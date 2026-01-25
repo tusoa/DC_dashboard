@@ -264,6 +264,13 @@ BEHAVIOR_COMPARISON_VARS = {
         'enforcement': 'legalcann9',
         'norms': 'normscann9'
     },
+    'cannabis5': {
+        'label': 'Driving within 5 hrs of smoking cannabis',
+        'prevalence': 'cannabis5',
+        'danger': 'dangercann5',
+        'enforcement': 'legalcann5',
+        'norms': 'normscann5'
+    },  
     'sim': {
         'label': 'Driving within 2 hrs of alcohol + cannabis',
         'prevalence': 'sim',
