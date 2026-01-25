@@ -815,8 +815,22 @@ def main():
         gender_options = ['Male', 'Female', 'Non-binary/Other']
         selected_genders = st.multiselect("Gender", options=gender_options, default=gender_options)
         
-        city_options = df['city'].dropna().unique().tolist()
-        selected_cities = st.multiselect("Location", options=city_options, default=city_options)
+        city_options = (
+            df['city']
+                .dropna()
+                .unique()
+                .tolist()
+        )
+
+        # Remove "Other" from location options
+        city_options = [city for city in city_options if city != 'Other']
+
+        # Location multiselect filter
+        selected_cities = st.multiselect(
+            "Location",
+            options=city_options,
+            default=city_options
+        )
         
         enroll_options = df['enroll'].dropna().unique().tolist()
         selected_enrollment = st.multiselect("College Enrollment", options=enroll_options, default=enroll_options)
