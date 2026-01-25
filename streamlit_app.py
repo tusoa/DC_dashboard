@@ -857,7 +857,6 @@ def main():
         filtered_df = filter_dataframe(df, filters)
         
         st.metric("Filtered Sample", len(filtered_df))
-        st.metric("Total Sample", len(df))
     
     # =========================================================================
     # MAIN CONTENT
