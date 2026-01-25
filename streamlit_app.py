@@ -6,7 +6,7 @@ A Streamlit dashboard for exploring traffic safety survey data from the DC metro
 To run:
 1. Install requirements: pip install streamlit pandas plotly openpyxl
 2. Place your data file in the same directory
-3. Run: streamlit run dc_survey_dashboard_v3.py
+3. Run: streamlit run dc_survey_dashboard_v4.py
 """
 
 import streamlit as st
@@ -227,9 +227,70 @@ AVOIDANCE_VARS = {
     'bikes': 'Biking/scootering'
 }
 
+# Behavior Comparison tab variable mappings
+BEHAVIOR_COMPARISON_VARS = {
+    'alcohol': {
+        'label': 'Driving within 2 hrs of 3+ drinks',
+        'prevalence': 'alcohol_bin',
+        'danger': 'dangeralc_num',
+        'enforcement': 'riskalc_num',
+        'norms': 'normsalc_bin'
+    },
+    'text': {
+        'label': 'Driving while manually using phone',
+        'prevalence': 'text_bin',
+        'danger': 'dangertext_num',
+        'enforcement': 'risktext_num',
+        'norms': 'normstext_bin'
+    },
+    'drowsy': {
+        'label': 'Driving after less than 5 hrs sleep',
+        'prevalence': 'drowsy_bin',
+        'danger': 'dangerdrowsy_num',
+        'enforcement': 'riskdrowsy_num',
+        'norms': 'normsdrowsy_bin'
+    },
+    'speed': {
+        'label': 'Driving 10+ mph over speed limit',
+        'prevalence': 'speed_bin',
+        'danger': 'dangerspeed_num',
+        'enforcement': 'riskspeed_num',
+        'norms': 'normsspeed_bin'
+    },
+    'cann9': {
+        'label': 'Driving within 9 hrs of ingesting cannabis',
+        'prevalence': 'cann9_bin',
+        'danger': 'dangercann9_num',
+        'enforcement': 'riskcann9_num',
+        'norms': 'normscann9_bin'
+    },
+    'sim': {
+        'label': 'Driving within 2 hrs of alcohol + cannabis',
+        'prevalence': 'sim_bin',
+        'danger': 'dangersim_num',
+        'enforcement': 'risksim_num',
+        'norms': 'normssim_bin'
+    },
+    'rx': {
+        'label': 'Driving while feeling effects of Rx/drugs',
+        'prevalence': 'rx_bin',
+        'danger': 'dangerrx_num',
+        'enforcement': 'riskrx_num',
+        'norms': 'normsrx_bin'
+    },
+    'seatbelt': {
+        'label': 'Driving without seatbelt',
+        'prevalence': 'seatbelt_bin',
+        'danger': 'dangerseatbelt_num',
+        'enforcement': 'riskseatbelt_num',
+        'norms': 'normsbelt_bin'
+    }
+}
+
 FREQUENCY_ORDER = ['Never', 'Once', 'Twice', 'More than twice', 'Prefer not to answer']
-DANGER_ORDER = ['Very safe', 'Somewhat safe', 'Unsure', 'Somewhat dangerous', 'Very dangerous', 'Prefer not to answer']
-LIKELIHOOD_ORDER = ['Very unlikely', 'Somewhat unlikely', 'Unsure', 'Somewhat likely', 'Very likely', 'Prefer not to answer']
+# Display order for charts (strongest response first)
+DANGER_ORDER = ['Very dangerous', 'Somewhat dangerous', 'Unsure', 'Somewhat safe', 'Very safe', 'Prefer not to answer']
+LIKELIHOOD_ORDER = ['Very likely', 'Somewhat likely', 'Unsure', 'Somewhat unlikely', 'Very unlikely', 'Prefer not to answer']
 HELMET_ORDER = ['None', 'A Few', 'Half', 'All', 'Prefer not to answer']
 ELECTRIC_ORDER = ['None', 'A Few', 'Half', 'All', 'Prefer not to answer']
 
@@ -308,6 +369,8 @@ def filter_dataframe(df, filters):
         filtered = filtered[filtered['city'].isin(filters['city'])]
     if filters['enrollment']:
         filtered = filtered[filtered['enroll'].isin(filters['enrollment'])]
+    if filters['university']:
+        filtered = filtered[filtered['university'].isin(filters['university'])]
     if filters['driver_status'] != 'All':
         if filters['driver_status'] == 'Drivers only':
             filtered = filtered[filtered['drive'] == 'Yes']
@@ -333,6 +396,37 @@ def calculate_prevalence(df, var, exclude_pna=True):
     
     ever = total - counts.get('Never', 0)
     return (ever / total) * 100
+
+def calculate_prevalence_binary(df, var):
+    """Calculate prevalence for binary (0/1) variables."""
+    if var not in df.columns:
+        return None
+    valid = df[var].dropna()
+    if len(valid) == 0:
+        return None
+    return (valid.sum() / len(valid)) * 100
+
+def calculate_danger_pct(df, var):
+    """Calculate % rating as somewhat or very dangerous (scores 4-5 on 1-5 scale)."""
+    if var not in df.columns:
+        return None
+    valid = df[var].dropna()
+    if len(valid) == 0:
+        return None
+    # 4 = Somewhat dangerous, 5 = Very dangerous
+    dangerous = ((valid >= 4).sum() / len(valid)) * 100
+    return dangerous
+
+def calculate_enforcement_pct(df, var):
+    """Calculate % rating as somewhat or very likely (scores 4-5 on 1-5 scale)."""
+    if var not in df.columns:
+        return None
+    valid = df[var].dropna()
+    if len(valid) == 0:
+        return None
+    # 4 = Somewhat likely, 5 = Very likely
+    likely = ((valid >= 4).sum() / len(valid)) * 100
+    return likely
 
 def calculate_distribution(df, var, order=None):
     """Calculate frequency distribution for a variable."""
@@ -547,13 +641,13 @@ def create_stacked_perception_chart(df, var_dict, title, order, colors):
     chart_df = pd.DataFrame(data)
     n = len(df)
     
-    # Set category order
+    # Set category order - display order matches new DANGER_ORDER/LIKELIHOOD_ORDER (strongest first)
     if is_danger:
-        cat_order = ['Safe', 'Unsure', 'Dangerous']
-        color_map = {'Safe': '#26686d', 'Unsure': '#666666', 'Dangerous': '#5d1542'}
+        cat_order = ['Dangerous', 'Unsure', 'Safe']
+        color_map = {'Dangerous': '#5d1542', 'Unsure': '#666666', 'Safe': '#26686d'}
     else:
-        cat_order = ['Unlikely', 'Unsure', 'Likely']
-        color_map = {'Unlikely': '#26686d', 'Unsure': '#666666', 'Likely': '#5d1542'}
+        cat_order = ['Likely', 'Unsure', 'Unlikely']
+        color_map = {'Likely': '#5d1542', 'Unsure': '#666666', 'Unlikely': '#26686d'}
     
     chart_df['Response'] = pd.Categorical(chart_df['Response'], categories=cat_order, ordered=True)
     
@@ -597,6 +691,77 @@ def create_stacked_perception_chart(df, var_dict, title, order, colors):
     
     return fig
 
+def create_behavior_comparison_chart(df, behavior_key, behavior_vars):
+    """Create a bar chart showing 4 aggregate measures for a single behavior."""
+    vars_info = behavior_vars[behavior_key]
+    label = vars_info['label']
+    
+    data = []
+    
+    # 1. Prevalence (% who did behavior)
+    prev = calculate_prevalence_binary(df, vars_info['prevalence'])
+    if prev is not None:
+        data.append({'Measure': 'Prevalence', 'Percentage': prev})
+    
+    # 2. Danger (% rating as dangerous)
+    danger = calculate_danger_pct(df, vars_info['danger'])
+    if danger is not None:
+        data.append({'Measure': 'Rated Dangerous', 'Percentage': danger})
+    
+    # 3. Enforcement (% rating as likely to be pulled over)
+    enforcement = calculate_enforcement_pct(df, vars_info['enforcement'])
+    if enforcement is not None:
+        data.append({'Measure': 'Rated Likely (Enforcement)', 'Percentage': enforcement})
+    
+    # 4. Norms (% believing peers engage)
+    norms = calculate_prevalence_binary(df, vars_info['norms'])
+    if norms is not None:
+        data.append({'Measure': 'Peers Engage', 'Percentage': norms})
+    
+    if not data:
+        return None
+    
+    chart_df = pd.DataFrame(data)
+    n = len(df)
+    
+    # Assign colors to each measure
+    color_map = {
+        'Prevalence': COLORS['primary'],
+        'Rated Dangerous': COLORS['secondary'],
+        'Rated Likely (Enforcement)': COLORS['accent'],
+        'Peers Engage': COLORS['neutral']
+    }
+    
+    fig = px.bar(
+        chart_df,
+        x='Measure',
+        y='Percentage',
+        text=chart_df['Percentage'].apply(lambda x: f'{x:.1f}%'),
+        color='Measure',
+        color_discrete_map=color_map
+    )
+    
+    fig.update_traces(textposition='outside', showlegend=False, textfont=dict(color='#000000', size=12))
+    fig.update_layout(
+        plot_bgcolor='#ffffff',
+        paper_bgcolor='#ffffff',
+        font={'color': '#666666', 'size': 13},
+        title={'text': f'{label} (N={n})', 'font': {'size': 16, 'color': '#666666'}},
+        xaxis_title='',
+        yaxis_title='Percentage',
+        xaxis=dict(tickfont={'color': '#666666', 'size': 12}, showgrid=True, gridcolor='#e2e8f0'),
+        yaxis=dict(range=[0, 100], tickfont={'color': '#666666', 'size': 12}, title={'font': {'color': '#666666'}}, showgrid=True, gridcolor='#e2e8f0'),
+        height=400,
+        margin=dict(l=20, r=20, t=50, b=20),
+        shapes=[{
+            'type': 'rect', 'xref': 'paper', 'yref': 'paper',
+            'x0': 0, 'y0': 0, 'x1': 1, 'y1': 1,
+            'line': {'color': '#e2e8f0', 'width': 1}
+        }]
+    )
+    
+    return fig
+
 # =============================================================================
 # MAIN APP
 # =============================================================================
@@ -625,6 +790,13 @@ def main():
         enroll_options = df['enroll'].dropna().unique().tolist()
         selected_enrollment = st.multiselect("College Enrollment", options=enroll_options, default=enroll_options)
         
+        # University filter
+        if 'university' in df.columns:
+            university_options = df['university'].dropna().unique().tolist()
+            selected_universities = st.multiselect("University", options=university_options, default=university_options)
+        else:
+            selected_universities = []
+        
         driver_status = st.radio("Driver Status", options=['All', 'Drivers only', 'Non-drivers only'], index=0)
         
         st.markdown("---")
@@ -634,6 +806,7 @@ def main():
             'gender': selected_genders,
             'city': selected_cities,
             'enrollment': selected_enrollment,
+            'university': selected_universities,
             'driver_status': driver_status
         }
         filtered_df = filter_dataframe(df, filters)
@@ -647,14 +820,15 @@ def main():
     st.title("DC Metropolitan Area Traffic Safety Survey")
     st.markdown("Survey results on driving behaviors, perceptions, and safety practices among young adults (18-24) in the DC area.")
     
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
         "Demographics",
         "Risky Driving",
         "Danger Perceptions",
         "Enforcement Perceptions",
         "Peer Norms",
         "DUI Avoidance",
-        "Micromobility"
+        "Micromobility",
+        "Behavior Comparison"
     ])
     
     # =========================================================================
@@ -782,24 +956,6 @@ def main():
             text=race_df['Percentage'].apply(lambda x: f'{x:.1f}%'),
             color_discrete_sequence=[COLORS['primary']]
         )
-# Race/ethnicity
-        st.markdown("*Respondents could select multiple race/ethnicity categories*")
-        
-        race_data = []
-        for var, label in RACE_VARS.items():
-            if var in filtered_df.columns:
-                pct = (filtered_df[var].sum() / len(filtered_df) * 100)
-                race_data.append({'Race/Ethnicity': label, 'Percentage': pct})
-        
-        race_df = pd.DataFrame(race_data).sort_values('Percentage', ascending=True)
-        fig_race = px.bar(
-            race_df,
-            x='Percentage',
-            y='Race/Ethnicity',
-            orientation='h',
-            text=race_df['Percentage'].apply(lambda x: f'{x:.1f}%'),
-            color_discrete_sequence=[COLORS['primary']]
-        )
         fig_race.update_traces(textposition='outside', textfont_color='#000000')
         fig_race.update_layout(
             title={'text': f'Race/Ethnicity (N={len(filtered_df)})', 'font': {'size': 16, 'color': '#666666'}},
@@ -814,7 +970,7 @@ def main():
         )
         st.plotly_chart(fig_race, use_container_width=True)
         
-# Years in DC and Driver status
+        # Years in DC and Driver status
         col3, col4 = st.columns(2)
         
         with col3:
@@ -1236,6 +1392,52 @@ def main():
             fig = create_prevalence_chart(skaters, skate_vars, 'Impaired Skateboarding Prevalence', COLORS['neutral'])
             if fig:
                 st.plotly_chart(fig, use_container_width=True)
+    
+    # =========================================================================
+    # TAB 8: BEHAVIOR COMPARISON
+    # =========================================================================
+    with tab8:
+        st.header("Behavior Comparison")
+        st.markdown(f"**{len(filtered_df)} respondents** | *Compare aggregate measures across behaviors*")
+        st.markdown("Select a behavior to see its prevalence, danger perception, enforcement perception, and peer norms side-by-side.")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Behavior 1")
+            selected_behavior_1 = st.selectbox(
+                "Select behavior:",
+                options=list(BEHAVIOR_COMPARISON_VARS.keys()),
+                format_func=lambda x: BEHAVIOR_COMPARISON_VARS[x]['label'],
+                key='compare_behavior_1'
+            )
+            
+            fig1 = create_behavior_comparison_chart(filtered_df, selected_behavior_1, BEHAVIOR_COMPARISON_VARS)
+            if fig1:
+                st.plotly_chart(fig1, use_container_width=True)
+        
+        with col2:
+            st.subheader("Behavior 2")
+            selected_behavior_2 = st.selectbox(
+                "Select behavior:",
+                options=list(BEHAVIOR_COMPARISON_VARS.keys()),
+                format_func=lambda x: BEHAVIOR_COMPARISON_VARS[x]['label'],
+                key='compare_behavior_2',
+                index=1  # Default to second option
+            )
+            
+            fig2 = create_behavior_comparison_chart(filtered_df, selected_behavior_2, BEHAVIOR_COMPARISON_VARS)
+            if fig2:
+                st.plotly_chart(fig2, use_container_width=True)
+        
+        st.markdown("---")
+        st.markdown("""
+        **Measure definitions:**
+        - **Prevalence**: % who engaged in the behavior at least once (past 30 days)
+        - **Rated Dangerous**: % who rated the behavior as "Somewhat dangerous" or "Very dangerous"
+        - **Rated Likely (Enforcement)**: % who rated being pulled over as "Somewhat likely" or "Very likely"
+        - **Peers Engage**: % who believe their peers engage in the behavior at least once
+        """)
 
 if __name__ == "__main__":
     main()
