@@ -712,7 +712,7 @@ def create_behavior_comparison_chart(df, behavior_key, behavior_vars):
             total = total - enforce_counts.get('Prefer not to answer', 0)
         if total > 0:
             likely = enforce_counts.get('Very likely', 0) + enforce_counts.get('Somewhat likely', 0)
-            data.append({'Measure': 'Enforcement Risk', 'Percentage': (likely / total) * 100, 'Order': 2})
+            data.append({'Measure': 'Perceived Enforcement Risk', 'Percentage': (likely / total) * 100, 'Order': 2})
     
     # 3. Danger (% rating as somewhat or very dangerous) - categorical text
     danger_var = vars_info['danger']
@@ -723,7 +723,7 @@ def create_behavior_comparison_chart(df, behavior_key, behavior_vars):
             total = total - danger_counts.get('Prefer not to answer', 0)
         if total > 0:
             dangerous = danger_counts.get('Very dangerous', 0) + danger_counts.get('Somewhat dangerous', 0)
-            data.append({'Measure': 'Danger', 'Percentage': (dangerous / total) * 100, 'Order': 3})
+            data.append({'Measure': 'Perceived Danger', 'Percentage': (dangerous / total) * 100, 'Order': 3})
     
     # 4. Norms (% believing peers engage at least once) - using existing calculate_prevalence
     norms = calculate_prevalence(df, vars_info['norms'])
@@ -739,8 +739,8 @@ def create_behavior_comparison_chart(df, behavior_key, behavior_vars):
     # Different color for each measure
     color_map = {
         'Prevalence': COLORS['primary'],       # Teal
-        'Enforcement Risk': COLORS['accent'],  # Gold
-        'Danger': COLORS['secondary'],         # Burgundy
+        'Perceived Enforcement Risk': COLORS['accent'],  # Gold
+        'Perceived Danger': COLORS['secondary'],         # Burgundy
         'Norms': COLORS['neutral']             # Gray
     }
     
@@ -839,9 +839,8 @@ def main():
         "Danger Perceptions",
         "Enforcement Perceptions",
         "Peer Norms",
-        "DUI Avoidance",
-        "Micromobility",
-        "Behavior Comparison"
+        "Behavior Comparison",
+        "Micromobility"
     ])
     
     # =========================================================================
@@ -1283,50 +1282,52 @@ def main():
         )
         if fig_norm_cross:
             st.plotly_chart(fig_norm_cross, use_container_width=True)
-    
-    # =========================================================================
-    # TAB 6: DUI AVOIDANCE
-    # =========================================================================
-    with tab6:
-        st.header("DUI Avoidance Methods")
-        st.markdown(f"**{len(filtered_df)} respondents** | *Methods used to avoid driving impaired*")
         
-        fig_avoid = create_prevalence_chart(
-            filtered_df, AVOIDANCE_VARS,
-            '% Using Each Method (At Least Once)',
-            color=COLORS['accent']
-        )
-        if fig_avoid:
-            st.plotly_chart(fig_avoid, use_container_width=True)
-        
-        st.subheader("Cross-tabulation")
+    # =========================================================================
+    # TAB 8: BEHAVIOR COMPARISON
+    # =========================================================================
+    with tab8:
+        st.header("Behavior Comparison")
+        st.markdown(f"**{len(filtered_df)} respondents** | *Compare aggregate measures across behaviors*")
+        st.markdown("Select a behavior to see its prevalence, danger perception, enforcement perception, and peer norms side-by-side.")
         
         col1, col2 = st.columns(2)
         
         with col1:
-            selected_avoid = st.selectbox(
-                "Select method:",
-                options=list(AVOIDANCE_VARS.keys()),
-                format_func=lambda x: AVOIDANCE_VARS[x],
-                key='avoid_select'
+            st.subheader("Behavior 1")
+            selected_behavior_1 = st.selectbox(
+                "Select behavior:",
+                options=list(BEHAVIOR_COMPARISON_VARS.keys()),
+                format_func=lambda x: BEHAVIOR_COMPARISON_VARS[x]['label'],
+                key='compare_behavior_1'
             )
+            
+            fig1 = create_behavior_comparison_chart(filtered_df, selected_behavior_1, BEHAVIOR_COMPARISON_VARS)
+            if fig1:
+                st.plotly_chart(fig1, use_container_width=True)
         
         with col2:
-            demo_options = {'gender': 'Gender', 'city': 'Location', 'enroll': 'Enrollment', 'age': 'Age'}
-            selected_demo_avoid = st.selectbox(
-                "Cross-tab by:",
-                options=list(demo_options.keys()),
-                format_func=lambda x: demo_options[x],
-                key='avoid_demo'
+            st.subheader("Behavior 2")
+            selected_behavior_2 = st.selectbox(
+                "Select behavior:",
+                options=list(BEHAVIOR_COMPARISON_VARS.keys()),
+                format_func=lambda x: BEHAVIOR_COMPARISON_VARS[x]['label'],
+                key='compare_behavior_2',
+                index=1  # Default to second option
             )
+            
+            fig2 = create_behavior_comparison_chart(filtered_df, selected_behavior_2, BEHAVIOR_COMPARISON_VARS)
+            if fig2:
+                st.plotly_chart(fig2, use_container_width=True)
         
-        fig_avoid_cross = create_crosstab_chart(
-            filtered_df, selected_avoid, selected_demo_avoid,
-            demo_options[selected_demo_avoid], AVOIDANCE_VARS[selected_avoid]
-        )
-        if fig_avoid_cross:
-            st.plotly_chart(fig_avoid_cross, use_container_width=True)
-    
+        st.markdown("---")
+        st.markdown("""
+        **Measure definitions:**
+        - **Prevalence**: % who engaged in the behavior at least once (past 30 days)
+        - **Perceived Enforcement Risk**: % who rated being pulled over as "Somewhat likely" or "Very likely"
+        - **Perceived Danger**: % who rated the behavior as "Somewhat dangerous" or "Very dangerous"
+        - **Norms**: % who believe their peers engage in the behavior at least once
+        """)
     # =========================================================================
     # TAB 7: MICROMOBILITY
     # =========================================================================
@@ -1405,52 +1406,6 @@ def main():
             fig = create_prevalence_chart(skaters, skate_vars, 'Impaired Skateboarding Prevalence', COLORS['neutral'])
             if fig:
                 st.plotly_chart(fig, use_container_width=True)
-    
-    # =========================================================================
-    # TAB 8: BEHAVIOR COMPARISON
-    # =========================================================================
-    with tab8:
-        st.header("Behavior Comparison")
-        st.markdown(f"**{len(filtered_df)} respondents** | *Compare aggregate measures across behaviors*")
-        st.markdown("Select a behavior to see its prevalence, danger perception, enforcement perception, and peer norms side-by-side.")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Behavior 1")
-            selected_behavior_1 = st.selectbox(
-                "Select behavior:",
-                options=list(BEHAVIOR_COMPARISON_VARS.keys()),
-                format_func=lambda x: BEHAVIOR_COMPARISON_VARS[x]['label'],
-                key='compare_behavior_1'
-            )
-            
-            fig1 = create_behavior_comparison_chart(filtered_df, selected_behavior_1, BEHAVIOR_COMPARISON_VARS)
-            if fig1:
-                st.plotly_chart(fig1, use_container_width=True)
-        
-        with col2:
-            st.subheader("Behavior 2")
-            selected_behavior_2 = st.selectbox(
-                "Select behavior:",
-                options=list(BEHAVIOR_COMPARISON_VARS.keys()),
-                format_func=lambda x: BEHAVIOR_COMPARISON_VARS[x]['label'],
-                key='compare_behavior_2',
-                index=1  # Default to second option
-            )
-            
-            fig2 = create_behavior_comparison_chart(filtered_df, selected_behavior_2, BEHAVIOR_COMPARISON_VARS)
-            if fig2:
-                st.plotly_chart(fig2, use_container_width=True)
-        
-        st.markdown("---")
-        st.markdown("""
-        **Measure definitions:**
-        - **Prevalence**: % who engaged in the behavior at least once (past 30 days)
-        - **Enforcement Risk**: % who rated being pulled over as "Somewhat likely" or "Very likely"
-        - **Danger**: % who rated the behavior as "Somewhat dangerous" or "Very dangerous"
-        - **Norms**: % who believe their peers engage in the behavior at least once
-        """)
 
 if __name__ == "__main__":
     main()
