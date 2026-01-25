@@ -227,7 +227,7 @@ AVOIDANCE_VARS = {
     'bikes': 'Biking/scootering'
 }
 
-# Behavior Comparison tab variable mappings (using same vars as rest of dashboard)
+# Behavior Comparison tab variable mappings
 BEHAVIOR_COMPARISON_VARS = {
     'alcohol': {
         'label': 'Driving within 2 hrs of 3+ drinks',
@@ -302,7 +302,7 @@ HELMET_ORDER = ['None', 'A Few', 'Half', 'All', 'Prefer not to answer']
 ELECTRIC_ORDER = ['None', 'A Few', 'Half', 'All', 'Prefer not to answer']
 
 # =============================================================================
-# INSTITUTION COLOR PALETTE
+# HECAOD COLOR PALETTE
 # =============================================================================
 COLORS = {
     'primary': '#26686d',       # Teal
@@ -314,7 +314,7 @@ COLORS = {
     'text': '#666666',          # Slate text
     'background': '#ffffff',    # White
     'border': '#e2e8f0',        # Light border
-    # Categorical palette - using institution colors
+    # Categorical palette - using hecaod colors
     'categorical': ['#26686d', '#5d1542', '#dcaa38', '#666666', '#3d8a8f', '#7d3562'],
     # Sequential for frequency (teal = good/never, burgundy = bad/frequent)
     'frequency': ['#26686d', '#666666', '#dcaa38', '#5d1542', '#e2e8f0'],
@@ -699,7 +699,18 @@ def create_stacked_perception_chart(df, var_dict, title, order, colors):
     return fig
 
 def create_behavior_comparison_chart(df, behavior_key, behavior_vars):
-    """Create a horizontal bar chart showing 4 aggregate measures for a single behavior."""
+    """Create a horizontal bar chart showing 4 aggregate measures for a single behavior.
+    Chart is restricted to respondents who reported driving.
+    """
+
+    # Restrict to drivers only
+    if 'drive' in df.columns:
+        df = df[df['drive'] == 'Yes']
+
+    # Exit early if no drivers
+    if df.empty:
+        return None
+        
     vars_info = behavior_vars[behavior_key]
     label = vars_info['label']
     
